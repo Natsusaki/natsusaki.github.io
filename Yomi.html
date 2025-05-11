@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>福建物构所 · 李春森课题组 文献问答系统</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f7fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      padding: 20px;
+      text-align: center;
+      background-color: #4a90e2;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    header span {
+      font-size: 18px;
+      font-weight: normal;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .chat-box {
+      flex: 1;
+      width: 90%;
+      max-width: 900px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    #chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid #e5e7eb;
+      background-color: #f9fafb;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .message {
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+    }
+
+    .user span {
+      color: #4a90e2;
+      font-weight: bold;
+    }
+
+    .ai span {
+      color: #333;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: none;
+      margin-bottom: 10px;
+    }
+
+    button {
+      align-self: flex-end;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #357ab7;
+    }
+
+    footer {
+      padding: 10px;
+      font-size: 14px;
+      color: #6b7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    福建物构所 · 李春森课题组 文献问答系统
+    <span>作者：肖晗</span>
+  </header>
+  <div class="chat-box">
+    <div id="chat-log"></div>
+    <textarea id="question" placeholder="请输入你的问题...（按 Enter 发送）"></textarea>
+    <button onclick="ask()">发送</button>
+  </div>
+  <footer>由李春森课题组开发支持 · 福建物构所</footer>
+
+  <script>
+    const API_URL = "http://172.19.2.73/v1/chat-messages";
+    const API_KEY = "app-0uH6Cohwg6Ej6u62yzxYzcpK";
+    let conversationId = "";
+
+    const chatLog = document.getElementById('chat-log');
+    const questionInput = document.getElementById('question');
+
+    questionInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        ask();
+      }
+    });
+
+    async function ask() {
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      // 显示用户问题
+      appendMessage("🧑‍💻 你", question, "user");
+      questionInput.value = "";
+
+      // 占位消息
+      const aiMessage = appendMessage("🤖 AI", "正在思考，请稍候...", "ai");
+
+      const requestBody = {
+        query: question,
+        inputs: {},
+        response_mode: "blocking", // 修改为同步模式
+        conversation_id: conversationId,
+        user: "user-001"
+      };
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + API_KEY
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error("状态码 " + response.status);
+        }
+
+        const result = await response.json();
+
+        // 调试输出，查看API响应内容
+        console.log("API响应：", result);
+
+        const reply = result.answer || result.message || "未获取到回答";
+        aiMessage.textContent = reply; // 显示AI的回复
+        chatLog.scrollTop = chatLog.scrollHeight; // 滚动到最底部
+        if (result.conversation_id) {
+          conversationId = result.conversation_id; // 保留会话ID
+        }
+      } catch (err) {
+        aiMessage.textContent = "❌ 网络错误：" + err.message;
+        console.error("请求错误：", err);
+      }
+    }
+
+    function appendMessage(sender, text, className) {
+      const div = document.createElement("div");
+      div.className = `message ${className}`;
+      div.innerHTML = `<span>${sender}：</span>\n${text}`;
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return div;
+    }
+  </script>
+</body>
+</html>
